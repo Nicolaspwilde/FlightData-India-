@@ -1,0 +1,42 @@
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, count, round
+
+# Initialize SparkSession
+spark = SparkSession.builder \
+    .appName("Airlines Data Analysis") \
+    .getOrCreate()
+
+# Read the Parquet file into a DataFrame
+parquet_file_path = "/mnt/bronzezoneconversions/Flight_Schedule.parquet"
+df = spark.read.parquet(parquet_file_path)
+
+# Group the data by airline and count the number of flights operated by each airline
+airline_counts = df.groupBy("airline").agg(count("*").alias("total_flights"))
+
+# Calculate the total number of days
+total_days = df.select("daysOfWeek").distinct().count()
+
+# Calculate the average number of flights per day for each airline
+avg_flights_per_day = airline_counts.withColumn("avg_flights_per_day", round(col("total_flights") / total_days, 2))
+
+# Calculate the total number of flights
+total_flights = df.count()
+
+# Calculate the market share for each airline as a percentage
+airline_market_share = airline_counts.withColumn("market_share", round(col("total_flights") / total_flights * 100, 2))
+
+# Identify the top airlines with the highest number of flights
+top_airlines = airline_counts.orderBy(col("total_flights").desc())
+
+# Show the results
+print("Number of flights operated by each airline:")
+airline_counts.show()
+
+print("Average number of flights per day for each airline:")
+avg_flights_per_day.show()
+
+print("Market share for each airline:")
+airline_market_share.show()
+
+print("Top airlines with the highest number of flights:")
+top_airlines.show()
